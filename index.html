@@ -87,7 +87,7 @@ const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
 
     map.setTerrain({
       source: "LINZ-Terrain",
-      exaggeration: 1.4
+      exaggeration: 1.2
     });
 
     map.easeTo({
@@ -381,7 +381,7 @@ function getNaLidarLayers() {
         },
         layers: [
           {
-            id: "Topo-Raster",
+            id: "Topo-Raster", 
             type: "raster",
             source: "LINZ-Topo-Raster"
           },
@@ -390,7 +390,7 @@ function getNaLidarLayers() {
             type: "hillshade",
             source: "LINZ-Elevation-Hillshade",
             paint: {
-              "hillshade-exaggeration": 0.4,
+              "hillshade-exaggeration":.1  ,
               "hillshade-illumination-anchor": "map",
               "hillshade-illumination-direction": 315
             }
@@ -437,7 +437,7 @@ function applyTerrainState() {
   if (terrainEnabled) {
     map.setTerrain({
       source: "LINZ-Terrain",
-      exaggeration: 1.4
+      exaggeration: 1.2
     });
 
     map.easeTo({
