@@ -189,8 +189,8 @@ const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
     "Prohibited", "#cc0000",    // Red
     "#888888"                   // Default (if value is missing)
   ],
-  "line-width": 1.5,
-  "line-opacity": 0.9
+  "line-width": .7,
+  "line-opacity": 1
 },
           layout: {
             visibility: docVisible ? "visible" : "none"
@@ -264,7 +264,7 @@ const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
             "line-width": [
               "interpolate", ["linear"], ["zoom"],
               8, 0.3,
-              14, 1.2
+              14, 1.6
             ],
             "line-opacity":[
               "case",
