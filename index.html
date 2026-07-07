@@ -397,7 +397,7 @@ function getNaLidarLayers() {
           },
           ...getDocLayers(),
           ...getClearingsLayers(),
-...getNaLidarSource()
+...getNaLidarLayers()
         ]
       };
     }
@@ -539,11 +539,11 @@ function setBasemap() {
       const center = map.getCenter();
       const zoom = map.getZoom();
 
-      window.history.replaceState(
-        null,
-        null,
-        `#${zoom.toFixed(2)}/${center.lat.toFixed(5)}/${center.lng.toFixed(5)}`
-      );
+      // window.history.replaceState(
+      //   null,
+      //   null,
+      //   `#${zoom.toFixed(2)}/${center.lat.toFixed(5)}/${center.lng.toFixed(5)}`
+      // );
     }
 
     function attachClearingsEvents() {
