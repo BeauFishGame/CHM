@@ -1,0 +1,258 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+#map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+}
+
+#top-bar {
+  position: relative;
+  height: 70px;
+  background-color: rgba(7, 7, 7, 1);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+#top-bar .logo {
+  height: 70px;
+  z-index: 11;
+}
+
+#title-container {
+  margin-left: 16px;
+  color: #fff;
+  min-width: 0;
+}
+
+#map-title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+#map-subtitle {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 3px;
+}
+
+#actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#actions button {
+  min-width: 72px;
+  height: 40px;
+  padding: 0 10px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+#actions button.active,
+.layer-btn.active {
+  background: #009e91;
+  color: #fff;
+}
+
+#actions button:active {
+  transform: translateY(1px);
+}
+
+.map-overlay-inner {
+  position: fixed;
+  top: 80px;
+  left: 10px;
+  width: 400px;
+  height: calc(100vh - 90px);
+  padding: 15px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .5);
+  z-index: 999;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-scroll {
+  padding-top: 30px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.close-button {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  color: #333;
+  cursor: pointer;
+  z-index: 10000;
+}
+
+.source-card {
+  background: #f6f7f9;
+  border: 1px solid #e2e5ea;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.source-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #e9edf3;
+}
+
+.source-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.source-body {
+  display: none;
+  padding: 10px 12px;
+  background: #fff;
+  border-top: 1px solid #e2e5ea;
+}
+
+.source-body.open {
+  display: block;
+}
+
+.basemap-btn,
+.layer-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  text-align: left;
+  background-color: #e9edf3;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.basemap-btn:hover,
+.layer-btn:hover {
+  background-color: #d1d5db;
+}
+
+.basemap-btn.active,
+.layer-btn.active {
+  background-color: #009e91;
+  color: #fff;
+  font-weight: bold;
+}
+
+.hint {
+  font-size: 11px;
+  opacity: .8;
+  line-height: 1.35;
+  margin-top: 8px;
+}
+
+.popup-title {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.maplibregl-ctrl-top-right {
+  top: 70px;
+}
+
+@media (max-width: 768px) {
+  #top-bar {
+    height: 56px;
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  #top-bar .logo {
+    display: none;
+  }
+
+  #title-container {
+    margin-left: 0;
+    flex: 1 1 auto;
+  }
+
+  #map-title {
+    font-size: 15px;
+  }
+
+  #map-subtitle {
+    display: none;
+  }
+
+  #actions button {
+    min-width: 58px;
+    height: 44px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+
+  .maplibregl-ctrl-top-right {
+    top: auto !important;
+    right: auto !important;
+    bottom: 10px;
+    left: 10px;
+    flex-direction: column;
+  }
+
+  .map-overlay-inner {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 40vh;
+    border-radius: 14px 14px 0 0;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    box-shadow: 0 6px 16px rgba(0, 0, 0, .25);
+  }
+
+  .panel-scroll {
+    padding-top: 36px;
+  }
+
+  .close-button {
+    top: 8px;
+    right: 12px;
+    font-size: 28px;
+  }
+
+  .basemap-btn,
+  .layer-btn {
+    padding: 12px;
+  }
+}

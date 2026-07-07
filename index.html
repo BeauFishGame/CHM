@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Clearings Map</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+
+  <script src="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/map.css">
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <div id="top-bar">
+    <div id="title-container">
+      <div id="map-title">Clearings Map</div>
+      <div id="map-subtitle">Satellite, Topo50, clearings and DOC hunting areas</div>
+    </div>
+
+    <div id="actions">
+      <button id="layer-toggle-btn" aria-pressed="true">Clearings On</button>
+      <button id="doc-toggle-btn" aria-pressed="true">DOC On</button>
+      <button id="basemap-toggle-btn">Satellite</button>
+      <button id="terrain-toggle-btn">3D</button>
+    </div>
+
+    
+  </div>
+
+  <script>
+    const LINZ_API_KEY = "d01hep5551e30kxb7w85hck49tp";
+
+    const CLEARINGS_TILE_URL = "https://data.fishandgameaccessmap.org/clearings_final/{z}/{x}/{y}";
+    const CLEARINGS_SOURCE_LAYER = "chm_clearings";
+    const CLEARINGS_SOURCE_ID = "clearings-source";
+    const CLEARINGS_FILL_LAYER_ID = "clearings-fill";
+    const CLEARINGS_LINE_LAYER_ID = "clearings-line";
+
+    const DOC_TILE_URL = "https://data.fishandgameaccessmap.org/doc_hunting_areas/{z}/{x}/{y}";
+    const DOC_SOURCE_LAYER = "doc_hunting";
+    const DOC_SOURCE_ID = "doc-hunting-source";
+    const DOC_FILL_LAYER_ID = "doc-fill";
+    const DOC_LINE_LAYER_ID = "doc-outline";
+
+
+const MISSING_LIDAR_TILE_URL = "https://data.fishandgameaccessmap.org/areas_missing_lidar/{z}/{x}/{y}";
+const MISSING_LIDAR_SOURCE_LAYER = "no_lidar";
+const MISSING_LIDAR_SOURCE_ID = "missing-lidar-source";
+const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
+
+    const INITIAL_VIEW = {
+      center: [175.5, -38.0],
+      zoom: 7,
+      minZoom: 5
+    };
+
+    let currentBasemap = "Satellite";
+    let clearingsVisible = true;
+    let docVisible = true;
+    let terrainEnabled = false;
+
+    function getHashView() {
+      const hash = window.location.hash.replace(/^#\/?/, "");
+      const parts = hash.split("/");
+
+      if (parts.length >= 3) {
+        const zoom = parseFloat(parts[0]);
+        const lat = parseFloat(parts[1]);
+        const lng = parseFloat(parts[2]);
+
+        if (Number.isFinite(zoom) && Number.isFinite(lat) && Number.isFinite(lng)) {
+          return { zoom, lat, lng };
+        }
+      }
+
+      return null;
+    }
+
+    function setTerrain(enabled) {
+
+  terrainEnabled = enabled;
+
+  if (enabled) {
+
+    map.setTerrain({
+      source: "LINZ-Terrain",
+      exaggeration: 1.4
+    });
+
+    map.easeTo({
+      pitch: 60,
+      duration: 600
+    });
+
+  } else {
+
+    map.setTerrain(null);
+
+    map.easeTo({
+      pitch: 0,
+      bearing: 0,
+      duration: 600
+    });
+
+  }
+
+  map.loadImage("images/grey-hash.png", (err, image) => {
+  if (err) throw err;
+  map.addImage("grey-hash", image);
+});
+
+  document.getElementById("terrain-toggle-btn").textContent =
+    enabled ? "2D" : "3D";
+}
+    const hashView = getHashView();
+    const initialCamera = hashView
+      ? { center: [hashView.lng, hashView.lat], zoom: hashView.zoom }
+      : INITIAL_VIEW;
+
+    function getClearingsSource() {
+      return {
+        type: "vector",
+        tiles: [CLEARINGS_TILE_URL],
+        minzoom: 5,
+        maxzoom: 13
+      };
+    }
+
+    function getDocSource() {
+      return {
+        type: "vector",
+        tiles: [DOC_TILE_URL],
+        minzoom: 0,
+        maxzoom: 9
+      };
+    }
+
+    
+    function getNaLidarSource() {
+      return {
+        type: "vector",
+        tiles: [MISSING_LIDAR_TILE_URL],
+        minzoom: 0,
+        maxzoom: 9
+      };
+    }
+
+    function getDocLayers() {
+      return [
+        {
+          id: DOC_FILL_LAYER_ID,
+          type: "fill",
+          source: DOC_SOURCE_ID,
+          "source-layer": DOC_SOURCE_LAYER,
+          paint: {
+            "fill-color":[
+    "match",
+    ["get", "HuntStatus"],
+    "Permitted", "#00aa00",     // Green
+    "Restricted", "#ff9900",    // Orange
+    "Prohibited", "#cc0000",    // Red
+    "#888888"                   // Default (if value is missing)
+  ],
+            "fill-opacity": [
+              "interpolate", ["linear"], ["zoom"],
+              6, .4,
+              13, 0.05,
+              20, 0.01
+            ]
+          },
+          layout: {
+            visibility: docVisible ? "visible" : "none"
+          }
+        },
+        {
+          id: DOC_LINE_LAYER_ID,
+          type: "line",
+          source: DOC_SOURCE_ID,
+          "source-layer": DOC_SOURCE_LAYER,
+         paint: {
+  "line-color": [
+    "match",
+    ["get", "HuntStatus"],
+    "Permitted", "#00aa00",     // Green
+    "Restricted", "#ff9900",    // Orange
+    "Prohibited", "#cc0000",    // Red
+    "#888888"                   // Default (if value is missing)
+  ],
+  "line-width": 1.5,
+  "line-opacity": 0.9
+},
+          layout: {
+            visibility: docVisible ? "visible" : "none"
+          }
+        }
+      ];
+    }
+
+    function getClearingsLayers() {
+      return [
+        {
+          id: CLEARINGS_FILL_LAYER_ID,
+          type: "fill",
+          source: CLEARINGS_SOURCE_ID,
+          "source-layer": CLEARINGS_SOURCE_LAYER,
+          minzoom: 0,
+          maxzoom: 24,
+          paint: {
+            "fill-color": [
+              "case",
+              [">=", ["get", "area_m2"], 100000],
+              "#0066ff",
+              "#f7449d"
+            ],
+           "fill-opacity": [
+  "interpolate", ["linear"], ["zoom"],
+
+  6,
+  [
+    "case",
+    [">=", ["get", "area_m2"], 100000],
+    .5,
+    1
+  ],
+
+  13,
+  [
+    "case",
+    [">=", ["get", "area_m2"], 100000],
+    .5,
+    0.9
+  ],
+
+  20,
+  [
+    "case",
+    [">=", ["get", "area_m2"], 100000],
+    0,
+    0.01
+  ]
+],
+          },
+          layout: {
+            visibility: clearingsVisible ? "visible" : "none"
+          }
+        },
+        {
+          id: CLEARINGS_LINE_LAYER_ID,
+          type: "line",
+          source: CLEARINGS_SOURCE_ID,
+          "source-layer": CLEARINGS_SOURCE_LAYER,
+          minzoom: 0,
+          maxzoom: 24,
+          paint: {
+            "line-color": [
+              "case",
+              [">=", ["get", "area_m2"], 100000],
+              "#0066ff",
+              "#f7449d"
+            ],
+            "line-width": [
+              "interpolate", ["linear"], ["zoom"],
+              8, 0.3,
+              14, 1.2
+            ],
+            "line-opacity":[
+              "case",
+              [">=", ["get", "area_m2"], 100000],
+              0,
+              1
+            ],
+          },
+          layout: {
+            visibility: clearingsVisible ? "visible" : "none"
+          }
+        }
+      ];
+    }
+
+    
+function getNaLidarLayers() {
+  return [
+    {
+      id: MISSING_LIDAR_FILL_LAYER_ID,
+      type: "fill",
+      source: MISSING_LIDAR_SOURCE_ID,
+      "source-layer": MISSING_LIDAR_SOURCE_LAYER,
+      paint: {
+        "fill-color": "#777777",
+
+        "fill-opacity": [
+          "interpolate", ["linear"], ["zoom"],
+          6, 0.5,
+          13, 0.5,
+          20, .5
+        ]
+      },
+      layout: {
+        visibility: clearingsVisible ? "visible" : "none"
+      }
+    }
+  ];
+}
+
+    function getSatelliteStyle() {
+      return {
+        version: 8,
+        glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+        sources: {
+          "basemaps-aerial": {
+            type: "raster",
+            tiles: [
+              `https://basemaps.linz.govt.nz/v1/tiles/aerial/WebMercatorQuad/{z}/{x}/{y}.webp?api=${LINZ_API_KEY}`
+            ],
+            tileSize: 256,
+            attribution: "© CC BY 4.0 LINZ"
+          },
+          "LINZ-Terrain": {
+            type: "raster-dem",
+            tileSize: 256,
+            maxzoom: 13,
+            tiles: [
+              `https://basemaps.linz.govt.nz/v1/tiles/elevation/WebMercatorQuad/{z}/{x}/{y}.png?api=${LINZ_API_KEY}&pipeline=terrain-rgb`
+            ]
+          },
+          [DOC_SOURCE_ID]: getDocSource(),
+          [CLEARINGS_SOURCE_ID]: getClearingsSource(),
+          [MISSING_LIDAR_SOURCE_ID]: getNaLidarSource()
+        },
+        layers: [
+          {
+            id: "basemaps-aerial",
+            type: "raster",
+            source: "basemaps-aerial"
+          },
+          ...getDocLayers(),
+...getNaLidarLayers(),
+...getClearingsLayers()
+        ]
+      };
+    }
+
+    function getTopo50Style() {
+      return {
+        version: 8,
+        glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+        sources: {
+          "LINZ-Elevation-Hillshade": {
+            type: "raster-dem",
+            maxzoom: 13,
+            minzoom: 0,
+            tileSize: 256,
+            tiles: [
+              `https://basemaps.linz.govt.nz/v1/tiles/elevation/WebMercatorQuad/{z}/{x}/{y}.png?pipeline=terrain-rgb&api=${LINZ_API_KEY}`
+            ]
+          },
+          "LINZ-Topo-Raster": {
+            type: "raster",
+            attribution: "© 2024 Toitū Te Whenua LINZ, CC BY 4.0",
+            maxzoom: 28,
+            minzoom: 0,
+            tileSize: 192,
+            tiles: [
+              `https://basemaps.linz.govt.nz/v1/tiles/topo-raster/WebMercatorQuad/{z}/{x}/{y}.webp?api=${LINZ_API_KEY}`
+            ]
+          },
+          "LINZ-Terrain": {
+            type: "raster-dem",
+            tileSize: 256,
+            maxzoom: 13,
+            tiles: [
+              `https://basemaps.linz.govt.nz/v1/tiles/elevation/WebMercatorQuad/{z}/{x}/{y}.png?api=${LINZ_API_KEY}&pipeline=terrain-rgb`
+            ]
+          },
+          [DOC_SOURCE_ID]: getDocSource(),
+          [CLEARINGS_SOURCE_ID]: getClearingsSource(),
+          [MISSING_LIDAR_SOURCE_ID]: getNaLidarSource()
+        },
+        layers: [
+          {
+            id: "Topo-Raster",
+            type: "raster",
+            source: "LINZ-Topo-Raster"
+          },
+          {
+            id: "Hillshade",
+            type: "hillshade",
+            source: "LINZ-Elevation-Hillshade",
+            paint: {
+              "hillshade-exaggeration": 0.4,
+              "hillshade-illumination-anchor": "map",
+              "hillshade-illumination-direction": 315
+            }
+          },
+          ...getDocLayers(),
+          ...getClearingsLayers(),
+...getNaLidarSource()
+        ]
+      };
+    }
+
+    const map = new maplibregl.Map({
+      container: "map",
+      style: getSatelliteStyle(),
+      center: initialCamera.center,
+      zoom: initialCamera.zoom,
+      minZoom: INITIAL_VIEW.minZoom,
+       pitch: 0,
+  bearing: 0
+    });
+
+    map.addControl(new maplibregl.NavigationControl({ showCompass: true }));
+
+    map.addControl(new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true,
+      showUserHeading: true
+    }));
+
+  
+
+function updateTerrainButton() {
+  const btn = document.getElementById("terrain-toggle-btn");
+  btn.textContent = terrainEnabled ? "2D" : "3D";
+  btn.setAttribute("aria-pressed", String(terrainEnabled));
+}
+
+function applyTerrainState() {
+  if (!map.isStyleLoaded() || !map.getSource("LINZ-Terrain")) {
+    map.once("style.load", applyTerrainState);
+    return;
+  }
+
+  if (terrainEnabled) {
+    map.setTerrain({
+      source: "LINZ-Terrain",
+      exaggeration: 1.4
+    });
+
+    map.easeTo({
+      pitch: 60,
+      bearing: map.getBearing(),
+      duration: 500
+    });
+  } else {
+    map.setTerrain(null);
+
+    map.easeTo({
+      pitch: 0,
+      bearing: 0,
+      duration: 500
+    });
+  }
+
+  updateTerrainButton();
+}
+
+function toggleTerrain() {
+  terrainEnabled = !terrainEnabled;
+  applyTerrainState();
+}
+
+
+ function setClearingsVisibility(visible) {
+  clearingsVisible = visible;
+  const visibility = visible ? "visible" : "none";
+
+  [
+    CLEARINGS_FILL_LAYER_ID,
+    CLEARINGS_LINE_LAYER_ID,
+    MISSING_LIDAR_FILL_LAYER_ID
+  ].forEach(layerId => {
+    if (map.getLayer(layerId)) {
+      map.setLayoutProperty(layerId, "visibility", visibility);
+    }
+  });
+
+  updateClearingsButton();
+}
+
+    function setDocVisibility(visible) {
+      docVisible = visible;
+      const visibility = visible ? "visible" : "none";
+
+      [DOC_FILL_LAYER_ID, DOC_LINE_LAYER_ID].forEach(layerId => {
+        if (map.getLayer(layerId)) {
+          map.setLayoutProperty(layerId, "visibility", visibility);
+        }
+      });
+
+      updateDocButton();
+    }
+
+    function toggleClearingsLayer() {
+      setClearingsVisibility(!clearingsVisible);
+    }
+
+    function toggleDocLayer() {
+      setDocVisibility(!docVisible);
+    }
+
+    function updateClearingsButton() {
+      const btn = document.getElementById("layer-toggle-btn");
+
+      btn.classList.toggle("active", clearingsVisible);
+      btn.setAttribute("aria-pressed", String(clearingsVisible));
+      btn.textContent = clearingsVisible ? "Clearings On" : "Clearings Off";
+    }
+
+    function updateDocButton() {
+      const btn = document.getElementById("doc-toggle-btn");
+
+      btn.classList.toggle("active", docVisible);
+      btn.setAttribute("aria-pressed", String(docVisible));
+      btn.textContent = docVisible ? "DOC On" : "DOC Off";
+    }
+
+function setBasemap() {
+  currentBasemap = currentBasemap === "Satellite" ? "Topo" : "Satellite";
+
+  const style = currentBasemap === "Satellite"
+    ? getSatelliteStyle()
+    : getTopo50Style();
+
+  map.once("style.load", () => {
+    applyTerrainState();
+  });
+
+  map.setStyle(style);
+
+  document.getElementById("basemap-toggle-btn").textContent =
+    currentBasemap === "Satellite" ? "Satellite" : "Topo50";
+}
+
+    function updateHash() {
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+
+      window.history.replaceState(
+        null,
+        null,
+        `#${zoom.toFixed(2)}/${center.lat.toFixed(5)}/${center.lng.toFixed(5)}`
+      );
+    }
+
+    function attachClearingsEvents() {
+      map.on("click", CLEARINGS_FILL_LAYER_ID, e => {
+        const feature = e.features && e.features[0];
+        if (!feature) return;
+
+        const props = feature.properties || {};
+        const title = props.name || props.Name || props.clearing_id || "Clearing";
+
+        const rows = Object.entries(props)
+          .slice(0, 8)
+          .map(([key, value]) => `<div><strong>${key}:</strong> ${value}</div>`)
+          .join("");
+
+        new maplibregl.Popup()
+          .setLngLat(e.lngLat)
+          .setHTML(`<div class="popup-title">${title}</div>${rows}`)
+          .addTo(map);
+      });
+
+      map.on("mouseenter", CLEARINGS_FILL_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+
+      map.on("mouseleave", CLEARINGS_FILL_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "";
+      });
+    }
+function attachDocEvents() {
+  const hoverPopup = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: 12
+  });
+
+  map.on("mousemove", DOC_FILL_LAYER_ID, e => {
+    const feature = e.features && e.features[0];
+
+    if (!feature) {
+      hoverPopup.remove();
+      return;
+    }
+
+    const props = feature.properties || {};
+
+    const huntStatus = props.HuntStatus ?? props.huntStatus ?? props.huntstatus ?? "Unknown";
+    const permitArea = props.PermitArea ?? props.permitArea ?? props.permitarea ?? "Unknown";
+    const huntBlockName = props.HuntBlockName ?? props.huntBlockName ?? props.huntblockname ?? "Unknown";
+
+    map.getCanvas().style.cursor = "pointer";
+
+    hoverPopup
+      .setLngLat(e.lngLat)
+      .setHTML(`
+        <div class="popup-title">${huntBlockName}</div>
+        <div><strong>Status:</strong> ${huntStatus}</div>
+        <div><strong>Permit area:</strong> ${permitArea}</div>
+        <div><strong>Block:</strong> ${huntBlockName}</div>
+      `)
+      .addTo(map);
+  });
+
+  map.on("mouseleave", DOC_FILL_LAYER_ID, () => {
+    map.getCanvas().style.cursor = "";
+    hoverPopup.remove();
+  });
+}
+
+    map.on("load", () => {
+      attachClearingsEvents();
+      // attachDocEvents();
+      setClearingsVisibility(clearingsVisible);
+      setDocVisibility(docVisible);
+      terrainEnabled = false;
+applyTerrainState();
+    });
+
+    document
+      .getElementById("basemap-toggle-btn")
+      .addEventListener("click", setBasemap);
+
+    document
+      .getElementById("layer-toggle-btn")
+      .addEventListener("click", toggleClearingsLayer);
+
+      document
+  .getElementById("terrain-toggle-btn")
+  .addEventListener("click", toggleTerrain);
+
+    document
+      .getElementById("doc-toggle-btn")
+      .addEventListener("click", toggleDocLayer);
+
+    map.on("moveend", updateHash);
+
+    document.addEventListener("keydown", (e) => {
+  // Ignore if typing in an input, textarea, etc.
+  if (
+    e.target.tagName === "INPUT" ||
+    e.target.tagName === "TEXTAREA" ||
+    e.target.isContentEditable
+  ) {
+    return;
+  }
+
+  document
+  .getElementById("terrain-toggle-btn")
+  .addEventListener("click", () => {
+      setTerrain(!terrainEnabled);
+  });
+
+  if (e.code === "Space") {
+    e.preventDefault(); // Stops the page scrolling
+    setBasemap();
+  }
+});
+
+    updateClearingsButton();
+    updateDocButton();
+  </script>
+</body>
+
+</html>
