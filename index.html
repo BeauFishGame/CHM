@@ -107,10 +107,6 @@ const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
 
   }
 
-  map.loadImage("images/grey-hash.png", (err, image) => {
-  if (err) throw err;
-  map.addImage("grey-hash", image);
-});
 
   document.getElementById("terrain-toggle-btn").textContent =
     enabled ? "2D" : "3D";
@@ -124,7 +120,7 @@ const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
       return {
         type: "vector",
         tiles: [CLEARINGS_TILE_URL],
-        minzoom: 5,
+        minzoom: 11,
         maxzoom: 13
       };
     }
@@ -206,7 +202,7 @@ const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
           type: "fill",
           source: CLEARINGS_SOURCE_ID,
           "source-layer": CLEARINGS_SOURCE_LAYER,
-          minzoom: 0,
+          minzoom: 10,
           maxzoom: 24,
           paint: {
             "fill-color": [
