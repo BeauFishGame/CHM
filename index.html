@@ -52,8 +52,8 @@ const MISSING_LIDAR_SOURCE_ID = "missing-lidar-source";
 const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
 
     const INITIAL_VIEW = {
-      center: [175.5, -38.0],
-      zoom: 7,
+      center: [173.899809, -40.714955	],
+      zoom: 5,
       minZoom: 5
     };
 
@@ -542,33 +542,6 @@ function setBasemap() {
       // );
     }
 
-    function attachClearingsEvents() {
-      map.on("click", CLEARINGS_FILL_LAYER_ID, e => {
-        const feature = e.features && e.features[0];
-        if (!feature) return;
-
-        const props = feature.properties || {};
-        const title = props.name || props.Name || props.clearing_id || "Clearing";
-
-        const rows = Object.entries(props)
-          .slice(0, 8)
-          .map(([key, value]) => `<div><strong>${key}:</strong> ${value}</div>`)
-          .join("");
-
-        new maplibregl.Popup()
-          .setLngLat(e.lngLat)
-          .setHTML(`<div class="popup-title">${title}</div>${rows}`)
-          .addTo(map);
-      });
-
-      map.on("mouseenter", CLEARINGS_FILL_LAYER_ID, () => {
-        map.getCanvas().style.cursor = "pointer";
-      });
-
-      map.on("mouseleave", CLEARINGS_FILL_LAYER_ID, () => {
-        map.getCanvas().style.cursor = "";
-      });
-    }
 function attachDocEvents() {
   const hoverPopup = new maplibregl.Popup({
     closeButton: false,
