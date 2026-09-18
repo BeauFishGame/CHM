@@ -21,10 +21,13 @@
     </div>
 
     <div id="actions">
-      <button id="layer-toggle-btn" aria-pressed="true">Clearings On</button>
-      <button id="doc-toggle-btn" aria-pressed="true">DOC On</button>
-      <button id="basemap-toggle-btn">Satellite</button>
-      <button id="terrain-toggle-btn">3D</button>
+      <button id="layer-toggle-btn" aria-pressed="true">Clearings On(Z)</button>
+      <button id="doc-toggle-btn" aria-pressed="true">DOC On (X) </button>
+      <button id="basemap-toggle-btn">Satellite (C)</button>
+      <button id="terrain-toggle-btn">3D (V) </button>
+      <button id="add-point-btn" aria-pressed="false">Add Point</button>
+      <button id="export-gpx-btn">Export GPX</button>
+      <button id="clear-points-btn">Clear Points</button>
     </div>
 
     
@@ -61,6 +64,11 @@ const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
     let clearingsVisible = true;
     let docVisible = true;
     let terrainEnabled = false;
+    let addingPoints = false;
+    let userPoints = [];
+
+    const USER_POINTS_SOURCE_ID = "user-points-source";
+    const USER_POINTS_LAYER_ID = "user-points-layer";
 
     function getHashView() {
       const hash = window.location.hash.replace(/^#\/?/, "");
@@ -141,6 +149,34 @@ const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
         tiles: [MISSING_LIDAR_TILE_URL],
         minzoom: 0,
         maxzoom: 9
+      };
+    }
+
+    function getUserPointsGeoJSON() {
+      return {
+        type: "FeatureCollection",
+        features: userPoints
+      };
+    }
+
+    function getUserPointsSource() {
+      return {
+        type: "geojson",
+        data: getUserPointsGeoJSON()
+      };
+    }
+
+    function getUserPointsLayer() {
+      return {
+        id: USER_POINTS_LAYER_ID,
+        type: "circle",
+        source: USER_POINTS_SOURCE_ID,
+        paint: {
+          "circle-radius": 7,
+          "circle-color": "#ffff00",
+          "circle-stroke-color": "#000000",
+          "circle-stroke-width": 2
+        }
       };
     }
 
@@ -324,7 +360,8 @@ function getNaLidarLayers() {
           },
           [DOC_SOURCE_ID]: getDocSource(),
           [CLEARINGS_SOURCE_ID]: getClearingsSource(),
-          [MISSING_LIDAR_SOURCE_ID]: getNaLidarSource()
+          [MISSING_LIDAR_SOURCE_ID]: getNaLidarSource(),
+          [USER_POINTS_SOURCE_ID]: getUserPointsSource()
         },
         layers: [
           {
@@ -334,7 +371,8 @@ function getNaLidarLayers() {
           },
           ...getDocLayers(),
 ...getNaLidarLayers(),
-...getClearingsLayers()
+...getClearingsLayers(),
+          getUserPointsLayer()
         ]
       };
     }
@@ -373,7 +411,8 @@ function getNaLidarLayers() {
           },
           [DOC_SOURCE_ID]: getDocSource(),
           [CLEARINGS_SOURCE_ID]: getClearingsSource(),
-          [MISSING_LIDAR_SOURCE_ID]: getNaLidarSource()
+          [MISSING_LIDAR_SOURCE_ID]: getNaLidarSource(),
+          [USER_POINTS_SOURCE_ID]: getUserPointsSource()
         },
         layers: [
           {
@@ -393,7 +432,8 @@ function getNaLidarLayers() {
           },
           ...getDocLayers(),
           ...getClearingsLayers(),
-...getNaLidarLayers()
+...getNaLidarLayers(),
+          getUserPointsLayer()
         ]
       };
     }
@@ -460,6 +500,111 @@ function toggleTerrain() {
 }
 
 
+function updateUserPoints() {
+  const source = map.getSource(USER_POINTS_SOURCE_ID);
+
+  if (source) {
+    source.setData(getUserPointsGeoJSON());
+  }
+}
+
+function updateAddPointButton() {
+  const btn = document.getElementById("add-point-btn");
+  btn.classList.toggle("active", addingPoints);
+  btn.setAttribute("aria-pressed", String(addingPoints));
+  btn.textContent = addingPoints ? "Click Map" : "Add Point";
+  map.getCanvas().style.cursor = addingPoints ? "crosshair" : "";
+}
+
+function toggleAddPointMode() {
+  addingPoints = !addingPoints;
+  updateAddPointButton();
+}
+
+function addUserPoint(lngLat) {
+  const defaultName = `Point ${userPoints.length + 1}`;
+  const enteredName = window.prompt("Point name:", defaultName);
+
+  if (enteredName === null) {
+    return;
+  }
+
+  const name = enteredName.trim() || defaultName;
+
+  userPoints.push({
+    type: "Feature",
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    properties: {
+      name,
+      description: ""
+    },
+    geometry: {
+      type: "Point",
+      coordinates: [lngLat.lng, lngLat.lat]
+    }
+  });
+
+  updateUserPoints();
+}
+
+function escapeXml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function exportPointsAsGpx() {
+  if (userPoints.length === 0) {
+    window.alert("Add at least one point before exporting.");
+    return;
+  }
+
+  const waypoints = userPoints.map(feature => {
+    const [lng, lat] = feature.geometry.coordinates;
+    const name = escapeXml(feature.properties.name);
+    const description = escapeXml(feature.properties.description);
+
+    return `  <wpt lat="${lat}" lon="${lng}">
+    <name>${name}</name>
+    <desc>${description}</desc>
+  </wpt>`;
+  }).join("\n");
+
+  const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Clearings Map"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+${waypoints}
+</gpx>`;
+
+  const blob = new Blob([gpx], {
+    type: "application/gpx+xml;charset=utf-8"
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "clearings-map-points.gpx";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function clearUserPoints() {
+  if (userPoints.length === 0) return;
+
+  if (window.confirm("Remove all added points?")) {
+    userPoints = [];
+    updateUserPoints();
+  }
+}
+
+
  function setClearingsVisibility(visible) {
   clearingsVisible = visible;
   const visibility = visible ? "visible" : "none";
@@ -503,7 +648,7 @@ function toggleTerrain() {
 
       btn.classList.toggle("active", clearingsVisible);
       btn.setAttribute("aria-pressed", String(clearingsVisible));
-      btn.textContent = clearingsVisible ? "Clearings On" : "Clearings Off";
+      btn.textContent = clearingsVisible ? "Clearings On (Z)" : "Clearings Off (Z)";
     }
 
     function updateDocButton() {
@@ -511,7 +656,7 @@ function toggleTerrain() {
 
       btn.classList.toggle("active", docVisible);
       btn.setAttribute("aria-pressed", String(docVisible));
-      btn.textContent = docVisible ? "DOC On" : "DOC Off";
+      btn.textContent = docVisible ? "DOC On (X)" : "DOC Off (X)";
     }
 
 function setBasemap() {
@@ -523,6 +668,7 @@ function setBasemap() {
 
   map.once("style.load", () => {
     applyTerrainState();
+    updateUserPoints();
   });
 
   map.setStyle(style);
@@ -582,6 +728,36 @@ function attachDocEvents() {
   });
 }
 
+
+    map.on("click", e => {
+      if (!addingPoints) return;
+
+      addUserPoint(e.lngLat);
+      addingPoints = false;
+      updateAddPointButton();
+    });
+
+    map.on("click", USER_POINTS_LAYER_ID, e => {
+      if (addingPoints || !e.features?.length) return;
+
+      const feature = e.features[0];
+      const featureId = feature.id;
+      const name = feature.properties?.name || "this point";
+
+      if (window.confirm(`Delete ${name}?`)) {
+        userPoints = userPoints.filter(point => point.id !== featureId);
+        updateUserPoints();
+      }
+    });
+
+    map.on("mouseenter", USER_POINTS_LAYER_ID, () => {
+      if (!addingPoints) map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", USER_POINTS_LAYER_ID, () => {
+      map.getCanvas().style.cursor = addingPoints ? "crosshair" : "";
+    });
+
     map.on("load", () => {
       attachClearingsEvents();
       // attachDocEvents();
@@ -607,6 +783,18 @@ applyTerrainState();
       .getElementById("doc-toggle-btn")
       .addEventListener("click", toggleDocLayer);
 
+    document
+      .getElementById("add-point-btn")
+      .addEventListener("click", toggleAddPointMode);
+
+    document
+      .getElementById("export-gpx-btn")
+      .addEventListener("click", exportPointsAsGpx);
+
+    document
+      .getElementById("clear-points-btn")
+      .addEventListener("click", clearUserPoints);
+
     map.on("moveend", updateHash);
 
     document.addEventListener("keydown", (e) => {
@@ -619,20 +807,28 @@ applyTerrainState();
     return;
   }
 
-  document
-  .getElementById("terrain-toggle-btn")
-  .addEventListener("click", () => {
-      setTerrain(!terrainEnabled);
-  });
+  switch (e.key.toLowerCase()) {
+    case "z":
+      toggleClearingsLayer();
+      break;
 
-  if (e.code === "Space") {
-    e.preventDefault(); // Stops the page scrolling
-    setBasemap();
+    case "x":
+      toggleDocLayer();
+      break;
+
+    case "c":
+      setBasemap();
+      break;
+
+    case "v":
+      toggleTerrain();   // optional if you want a shortcut for 3D
+      break;
   }
 });
 
     updateClearingsButton();
     updateDocButton();
+    updateAddPointButton();
   </script>
 </body>
 
