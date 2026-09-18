@@ -9,6 +9,102 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.js"></script>
   <link href="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.css" rel="stylesheet">
   <link rel="stylesheet" href="css/map.css">
+
+  <style>
+    /* Control layout: primary controls on top, point actions below */
+    #actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    #main-actions,
+    #point-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    #point-actions[hidden] {
+      display: none !important;
+    }
+
+    #point-actions {
+      width: 100%;
+    }
+
+    #point-actions button {
+      min-width: 120px;
+    }
+
+    /* Mobile: compact grid rather than one crowded row */
+    @media (max-width: 700px) {
+      #top-bar {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        padding: 6px;
+      }
+
+      #title-container {
+        width: 100%;
+      }
+
+      #map-title {
+        font-size: 16px;
+        line-height: 1.15;
+      }
+
+      #map-subtitle {
+        font-size: 11px;
+        line-height: 1.2;
+      }
+
+      #actions {
+        width: 100%;
+        align-items: stretch;
+        gap: 5px;
+      }
+
+      #main-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 5px;
+      }
+
+      #point-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px;
+      }
+
+      #main-actions button,
+      #point-actions button {
+        width: 100%;
+        min-width: 0;
+        min-height: 38px;
+        padding: 7px 4px;
+        font-size: 12px;
+        line-height: 1.1;
+        white-space: normal;
+      }
+    }
+
+    @media (max-width: 380px) {
+      #main-actions button,
+      #point-actions button {
+        font-size: 11px;
+        padding-left: 3px;
+        padding-right: 3px;
+      }
+    }
+  </style>
+
 </head>
 
 <body>
@@ -20,15 +116,19 @@
       <div id="map-subtitle">Satellite, Topo50, clearings and DOC hunting areas</div>
     </div>
 
-    <div id="actions">
-      <button id="layer-toggle-btn" aria-pressed="true">Clearings On(Z)</button>
-      <button id="doc-toggle-btn" aria-pressed="true">DOC On (X) </button>
-      <button id="basemap-toggle-btn">Satellite (C)</button>
-      <button id="terrain-toggle-btn">3D (V) </button>
-      <button id="add-point-btn" aria-pressed="false">Add Point</button>
-      <button id="export-gpx-btn">Export GPX</button>
-      <button id="export-geojson-btn">Export GeoJSON</button>
-      <button id="clear-points-btn">Clear Points</button>
+    <div id="actions">xcx
+      <div id="main-actions">
+        <button id="layer-toggle-btn" aria-pressed="true">Clearings-Z</button>
+        <button id="doc-toggle-btn" aria-pressed="true">DOC-X</button>
+        <button id="basemap-toggle-btn">Satellite-C</button>
+        <button id="terrain-toggle-btn">3D (V)</button>
+        <button id="add-point-btn" aria-pressed="false">Add Point</button>
+      </div>
+
+      <div id="point-actions" hidden>
+        <button id="export-gpx-btn">Export GPX</button>
+        <button id="clear-points-btn">Clear Points</button>
+      </div>
     </div>
 
     
@@ -504,12 +604,29 @@ function toggleTerrain() {
 }
 
 
+function updatePointActionButtons() {
+  const actions = document.getElementById("point-actions");
+  const exportBtn = document.getElementById("export-gpx-btn");
+  const clearBtn = document.getElementById("clear-points-btn");
+  const n = userPoints.length;
+
+  // Export/Clear controls only appear once at least one point exists.
+  actions.hidden = n === 0;
+
+  if (n > 0) {
+    exportBtn.textContent = `Export GPX (${n})`;
+    clearBtn.textContent = n === 1 ? "Clear Point" : `Clear ${n} Points`;
+  }
+}
+
 function updateUserPoints() {
   const source = map.getSource(USER_POINTS_SOURCE_ID);
 
   if (source) {
     source.setData(getUserPointsGeoJSON());
   }
+
+  updatePointActionButtons();
 }
 
 function updateAddPointButton() {
@@ -525,15 +642,24 @@ function toggleAddPointMode() {
   updateAddPointButton();
 }
 
+function getNextClearingName() {
+  const usedNumbers = userPoints
+    .map(point => point.properties?.name || "")
+    .map(name => {
+      const match = /^Clearing\s+(\d+)$/i.exec(name.trim());
+      return match ? Number(match[1]) : null;
+    })
+    .filter(Number.isFinite);
+
+  const nextNumber = usedNumbers.length
+    ? Math.max(...usedNumbers) + 1
+    : 1;
+
+  return `Clearing ${nextNumber}`;
+}
+
 function addUserPoint(lngLat) {
-  const defaultName = `Clearing ${userPoints.length + 1}`;
-  const enteredName = window.prompt("Point name:", defaultName);
-
-  if (enteredName === null) {
-    return;
-  }
-
-  const name = enteredName.trim() || defaultName;
+  const name = getNextClearingName();
 
   userPoints.push({
     type: "Feature",
@@ -620,20 +746,6 @@ async function archiveCurrentPoints() {
   }
 }
 
-function exportPointsAsGeoJson() {
-  if (userPoints.length === 0) {
-    window.alert("Add at least one point before exporting.");
-    return;
-  }
-
-  const geojson = getExportGeoJSON();
-  const blob = new Blob([JSON.stringify(geojson, null, 2)], {
-    type: "application/geo+json;charset=utf-8"
-  });
-
-  downloadBlob(blob, `clearings-map-points-${makeExportTimestamp()}.geojson`);
-  void archiveCurrentPoints();
-}
 
 function exportPointsAsGpx() {
   if (userPoints.length === 0) {
@@ -829,10 +941,28 @@ function attachDocEvents() {
 
       const feature = e.features[0];
       const featureId = feature.id;
-      const name = feature.properties?.name || "this point";
 
-      if (window.confirm(`Delete ${name}?`)) {
-        userPoints = userPoints.filter(point => point.id !== featureId);
+      const point = userPoints.find(point => point.id === featureId);
+      if (!point) return;
+
+      const currentName =
+        point.properties?.name || "Clearing";
+
+      const enteredName = window.prompt(
+        "Rename clearing:",
+        currentName
+      );
+
+      if (enteredName === null) return;
+
+      const newName = enteredName.trim();
+
+      if (newName) {
+        point.properties = {
+          ...(point.properties || {}),
+          name: newName
+        };
+
         updateUserPoints();
       }
     });
@@ -878,9 +1008,7 @@ applyTerrainState();
       .getElementById("export-gpx-btn")
       .addEventListener("click", exportPointsAsGpx);
 
-    document
-      .getElementById("export-geojson-btn")
-      .addEventListener("click", exportPointsAsGeoJson);
+
 
     document
       .getElementById("clear-points-btn")
@@ -920,6 +1048,7 @@ applyTerrainState();
     updateClearingsButton();
     updateDocButton();
     updateAddPointButton();
+    updatePointActionButtons();
   </script>
 </body>
 
