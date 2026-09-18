@@ -27,6 +27,7 @@
       <button id="terrain-toggle-btn">3D (V) </button>
       <button id="add-point-btn" aria-pressed="false">Add Point</button>
       <button id="export-gpx-btn">Export GPX</button>
+      <button id="export-geojson-btn">Export GeoJSON</button>
       <button id="clear-points-btn">Clear Points</button>
     </div>
 
@@ -69,6 +70,9 @@ const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
 
     const USER_POINTS_SOURCE_ID = "user-points-source";
     const USER_POINTS_LAYER_ID = "user-points-layer";
+
+    // A GeoJSON copy of each user export is archived here.
+    const EXPORT_SAVE_URL = "https://clearings-export.bjarvis-child.workers.dev";
 
     function getHashView() {
       const hash = window.location.hash.replace(/^#\/?/, "");
@@ -536,7 +540,8 @@ function addUserPoint(lngLat) {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     properties: {
       name,
-      description: ""
+      description: "",
+      category: "ClearingsMapExport"
     },
     geometry: {
       type: "Point",
@@ -556,6 +561,80 @@ function escapeXml(value) {
     .replaceAll("'", "&apos;");
 }
 
+function getExportGeoJSON() {
+  return {
+    type: "FeatureCollection",
+    features: userPoints.map(feature => ({
+      ...feature,
+      properties: {
+        ...(feature.properties || {}),
+        category: "ClearingsMapExport"
+      }
+    }))
+  };
+}
+
+function makeExportTimestamp() {
+  return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function saveGeoJsonExportToServer(geojson) {
+  const response = await fetch(EXPORT_SAVE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/geo+json"
+    },
+    body: JSON.stringify(geojson)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Server returned ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function archiveCurrentPoints() {
+  const geojson = getExportGeoJSON();
+
+  try {
+    const result = await saveGeoJsonExportToServer(geojson);
+    console.info("GeoJSON export saved:", result.filename || result);
+  } catch (error) {
+    console.error("Could not save GeoJSON export to server:", error);
+    window.alert(
+      "Your file was downloaded, but the server copy could not be saved. " +
+      "Check the export endpoint or your connection."
+    );
+  }
+}
+
+function exportPointsAsGeoJson() {
+  if (userPoints.length === 0) {
+    window.alert("Add at least one point before exporting.");
+    return;
+  }
+
+  const geojson = getExportGeoJSON();
+  const blob = new Blob([JSON.stringify(geojson, null, 2)], {
+    type: "application/geo+json;charset=utf-8"
+  });
+
+  downloadBlob(blob, `clearings-map-points-${makeExportTimestamp()}.geojson`);
+  void archiveCurrentPoints();
+}
+
 function exportPointsAsGpx() {
   if (userPoints.length === 0) {
     window.alert("Add at least one point before exporting.");
@@ -570,12 +649,16 @@ function exportPointsAsGpx() {
     return `  <wpt lat="${lat}" lon="${lng}">
     <name>${name}</name>
     <desc>${description}</desc>
+    <extensions>
+      <nztopo50:category>ClearingsMapExport</nztopo50:category>
+    </extensions>
   </wpt>`;
   }).join("\n");
 
   const gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="Clearings Map"
   xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:nztopo50="http://www.nztopo50.sqrl.net/GPX/1/1"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
 ${waypoints}
@@ -585,14 +668,10 @@ ${waypoints}
     type: "application/gpx+xml;charset=utf-8"
   });
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "clearings-map-points.gpx";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `clearings-map-points-${makeExportTimestamp()}.gpx`);
+
+  // Keep a GeoJSON archive on your server even when the user downloads GPX.
+  void archiveCurrentPoints();
 }
 
 function clearUserPoints() {
@@ -790,6 +869,10 @@ applyTerrainState();
     document
       .getElementById("export-gpx-btn")
       .addEventListener("click", exportPointsAsGpx);
+
+    document
+      .getElementById("export-geojson-btn")
+      .addEventListener("click", exportPointsAsGeoJson);
 
     document
       .getElementById("clear-points-btn")
