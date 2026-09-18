@@ -526,7 +526,7 @@ function toggleAddPointMode() {
 }
 
 function addUserPoint(lngLat) {
-  const defaultName = `Point ${userPoints.length + 1}`;
+  const defaultName = `Clearing ${userPoints.length + 1}`;
   const enteredName = window.prompt("Point name:", defaultName);
 
   if (enteredName === null) {
@@ -646,12 +646,20 @@ function exportPointsAsGpx() {
     const name = escapeXml(feature.properties.name);
     const description = escapeXml(feature.properties.description);
 
+    const NZTOPO50_CATEGORY = "ClearingsMapExport";
+const NZTOPO50_ICON = 21;        // binoculars
+const NZTOPO50_COLORINDEX = 7; 
+
     return `  <wpt lat="${lat}" lon="${lng}">
     <name>${name}</name>
     <desc>${description}</desc>
-    <extensions>
-      <nztopo50:category>ClearingsMapExport</nztopo50:category>
-    </extensions>
+  <extensions>
+  <nztopo50:isclosed>false</nztopo50:isclosed>
+  <nztopo50:icon>21</nztopo50:icon>
+  <nztopo50:photourl></nztopo50:photourl>
+  <nztopo50:category>ClearingsMapExport</nztopo50:category>
+  <nztopo50:colorindex>7</nztopo50:colorindex>
+</extensions>
   </wpt>`;
   }).join("\n");
 
