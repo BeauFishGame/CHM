@@ -11,87 +11,143 @@
   <link rel="stylesheet" href="css/map.css">
 
   <style>
-    /* Control layout: primary controls on top, point actions below */
+    /* Main controls: vertically centered */
+    #top-bar {
+      align-items: center;
+    }
+
     #actions {
+      position: relative;
       display: flex;
-      flex-direction: column;
-      align-items: flex-end;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #main-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
       gap: 6px;
     }
 
-    #main-actions,
+    #main-actions button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+    }
+
+    /* Contextual point actions: floating popdown */
     #point-actions {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: 50;
+
       display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-end;
+      align-items: center;
       gap: 6px;
+      padding: 8px;
+
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid rgba(0, 0, 0, 0.16);
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(6px);
     }
 
     #point-actions[hidden] {
       display: none !important;
     }
 
-    #point-actions {
-      width: 100%;
-    }
-
     #point-actions button {
-      min-width: 120px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 118px;
+      min-height: 38px;
     }
 
-    /* Mobile: compact grid rather than one crowded row */
+
+    /* Desktop: move MapLibre navigation/geolocation controls below the top controls */
+    @media (min-width: 701px) {
+      .maplibregl-ctrl-top-right {
+        top: 82px !important;
+      }
+    }
+
+    /* Mobile */
     @media (max-width: 700px) {
-      #top-bar {
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 6px;
-        padding: 6px;
-      }
+   #title-container {
+    display: none !important;
+  }
 
-      #title-container {
-        width: 100%;
-      }
+  #top-bar {
+    top: 8px !important;
+    left: 2px;
+    right: 2px;
 
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+  }
       #map-title {
         font-size: 16px;
         line-height: 1.15;
+        
       }
 
       #map-subtitle {
         font-size: 11px;
         line-height: 1.2;
+
       }
 
       #actions {
         width: 100%;
-        align-items: stretch;
-        gap: 5px;
+        align-items: center;
+        justify-content: center;
       }
 
-      #main-actions {
-        width: 100%;
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 5px;
-      }
+   #main-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  #main-actions button,
+  #point-actions button {
+    min-height: 30px;
+    height: 30px;
+    padding: 1px 4px;
+    font-size: 10px;
+    line-height: 1;
+    border-radius: 7px;
+  }
 
       #point-actions {
-        width: 100%;
+        top: calc(100% + 6px);
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+
+        width: min(92vw, 320px);
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 5px;
+        gap: 6px;
+        padding: 1px;
       }
 
-      #main-actions button,
       #point-actions button {
         width: 100%;
         min-width: 0;
-        min-height: 38px;
-        padding: 7px 4px;
+        min-height: 12px;
         font-size: 12px;
-        line-height: 1.1;
-        white-space: normal;
       }
     }
 
@@ -103,25 +159,114 @@
         padding-right: 3px;
       }
     }
-  </style>
+  
+    /* User point editor popup */
+    .point-editor-popup .maplibregl-popup-content {
+      padding: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+      min-width: 230px;
+    }
+
+    .point-editor {
+      padding: 12px;
+      background: rgba(255,255,255,0.98);
+      color: #222;
+      font-family: inherit;
+    }
+
+    .point-editor-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .point-editor-input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 8px 9px;
+      border: 1px solid #bbb;
+      border-radius: 7px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .point-editor-input:focus {
+      border-color: #666;
+    }
+
+    .point-editor-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-top: 9px;
+    }
+
+    .point-editor-actions button {
+      min-height: 34px;
+      border: 0;
+      border-radius: 7px;
+      padding: 6px 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .point-editor-save {
+      background: #222;
+      color: #fff;
+    }
+
+    .point-editor-delete {
+      background: #b42318;
+      color: #fff;
+    }
+
+    .point-editor-cancel {
+      background: #e8e8e8;
+      color: #222;
+    }
+
+    @media (max-width: 700px) {
+      .point-editor-popup .maplibregl-popup-content {
+        min-width: 210px;
+      }
+
+      .point-editor {
+        padding: 10px;
+      }
+
+      .point-editor-actions button {
+        min-height: 32px;
+        font-size: 11px;
+      }
+    }
+
+</style>
 
 </head>
 
 <body>
   <div id="map"></div>
 
-  <div id="top-bar">
-    <div id="title-container">
-      <div id="map-title">Clearings Map</div>
-      <div id="map-subtitle">Satellite, Topo50, clearings and DOC hunting areas</div>
-    </div>
+  <div id="top-bar"> 
+  <div id="title-container"> 
+    <div id="map-title" style="color:#f7449d; font-size:22px;">
+      Clearings Map
+    </div> 
+    <div id="map-subtitle" style="color:#ffffff; font-size:14px;">
+      Zoom into DOC hunting areas (green) to see mapped clearings in pink.
+    </div> 
+  </div>
 
-    <div id="actions">xcx
+
+    <div id="actions">
       <div id="main-actions">
-        <button id="layer-toggle-btn" aria-pressed="true">Clearings-Z</button>
-        <button id="doc-toggle-btn" aria-pressed="true">DOC-X</button>
-        <button id="basemap-toggle-btn">Satellite-C</button>
-        <button id="terrain-toggle-btn">3D (V)</button>
+        <button id="layer-toggle-btn" aria-pressed="true">Clearings On</button>
+        <button id="doc-toggle-btn" aria-pressed="true">DOC On</button>
+        <button id="basemap-toggle-btn">Satellite</button>
+        <button id="terrain-toggle-btn">3D</button>
         <button id="add-point-btn" aria-pressed="false">Add Point</button>
       </div>
 
@@ -276,10 +421,10 @@ const MISSING_LIDAR_FILL_LAYER_ID = "missing-lidar-fill";
         type: "circle",
         source: USER_POINTS_SOURCE_ID,
         paint: {
-          "circle-radius": 7,
-          "circle-color": "#ffff00",
-          "circle-stroke-color": "#000000",
-          "circle-stroke-width": 2
+          "circle-radius": 5,
+          "circle-color": "#FFAC1C",
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1.5
         }
       };
     }
@@ -562,9 +707,13 @@ function getNaLidarLayers() {
 
   
 
+function shortcutHint(key) {
+  return window.innerWidth > 700 ? ` (${key})` : "";
+}
+
 function updateTerrainButton() {
   const btn = document.getElementById("terrain-toggle-btn");
-  btn.textContent = terrainEnabled ? "2D" : "3D";
+  btn.textContent = terrainEnabled ? "2D" : `3D${shortcutHint("V")}`;
   btn.setAttribute("aria-pressed", String(terrainEnabled));
 }
 
@@ -633,7 +782,7 @@ function updateAddPointButton() {
   const btn = document.getElementById("add-point-btn");
   btn.classList.toggle("active", addingPoints);
   btn.setAttribute("aria-pressed", String(addingPoints));
-  btn.textContent = addingPoints ? "Click Map" : "Add Point";
+  btn.textContent = addingPoints ? "Click Map" : `Add Point${shortcutHint("B")}`;
   map.getCanvas().style.cursor = addingPoints ? "crosshair" : "";
 }
 
@@ -660,11 +809,13 @@ function getNextClearingName() {
 
 function addUserPoint(lngLat) {
   const name = getNextClearingName();
+  const pointId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
   userPoints.push({
     type: "Feature",
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    id: pointId,
     properties: {
+      point_id: pointId,
       name,
       description: "",
       category: "ClearingsMapExport"
@@ -847,7 +998,7 @@ function clearUserPoints() {
 
       btn.classList.toggle("active", clearingsVisible);
       btn.setAttribute("aria-pressed", String(clearingsVisible));
-      btn.textContent = clearingsVisible ? "Clearings On (Z)" : "Clearings Off (Z)";
+      btn.textContent = clearingsVisible ? `Clearings On${shortcutHint("Z")}` : `Clearings Off${shortcutHint("Z")}`;
     }
 
     function updateDocButton() {
@@ -855,7 +1006,7 @@ function clearUserPoints() {
 
       btn.classList.toggle("active", docVisible);
       btn.setAttribute("aria-pressed", String(docVisible));
-      btn.textContent = docVisible ? "DOC On (X)" : "DOC Off (X)";
+      btn.textContent = docVisible ? `DOC On${shortcutHint("X")}` : `DOC Off${shortcutHint("X")}`;
     }
 
 function setBasemap() {
@@ -873,7 +1024,7 @@ function setBasemap() {
   map.setStyle(style);
 
   document.getElementById("basemap-toggle-btn").textContent =
-    currentBasemap === "Satellite" ? "Satellite" : "Topo50";
+    currentBasemap === "Satellite" ? `Satellite${shortcutHint("C")}` : `Topo50${shortcutHint("C")}`;
 }
 
     function updateHash() {
@@ -936,35 +1087,134 @@ function attachDocEvents() {
       updateAddPointButton();
     });
 
+
+    let pointEditorPopup = null;
+
+    function openPointEditor(point, lngLat) {
+      if (pointEditorPopup) {
+        pointEditorPopup.remove();
+      }
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "point-editor";
+
+      const title = document.createElement("div");
+      title.className = "point-editor-title";
+      title.textContent = "Edit clearing";
+
+      const input = document.createElement("input");
+      input.className = "point-editor-input";
+      input.type = "text";
+      input.value = point.properties?.name || "Clearing";
+      input.setAttribute("aria-label", "Clearing name");
+
+      const actions = document.createElement("div");
+      actions.className = "point-editor-actions";
+
+      const saveBtn = document.createElement("button");
+      saveBtn.className = "point-editor-save";
+      saveBtn.type = "button";
+      saveBtn.textContent = "Save";
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "point-editor-delete";
+      deleteBtn.type = "button";
+      deleteBtn.textContent = "Delete";
+
+      const cancelBtn = document.createElement("button");
+      cancelBtn.className = "point-editor-cancel";
+      cancelBtn.type = "button";
+      cancelBtn.textContent = "Cancel";
+
+      actions.append(saveBtn, deleteBtn, cancelBtn);
+      wrapper.append(title, input, actions);
+
+      pointEditorPopup = new maplibregl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        offset: 12,
+        className: "point-editor-popup"
+      })
+        .setLngLat(lngLat)
+        .setDOMContent(wrapper)
+        .addTo(map);
+
+      // Focus/select makes renaming quick on desktop and mobile.
+      setTimeout(() => {
+        input.focus();
+        input.select();
+      }, 0);
+
+      const save = () => {
+        const newName = input.value.trim();
+
+        if (newName) {
+          point.properties = {
+            ...(point.properties || {}),
+            name: newName
+          };
+
+          updateUserPoints();
+        }
+
+        pointEditorPopup?.remove();
+        pointEditorPopup = null;
+      };
+
+      saveBtn.addEventListener("click", save);
+
+      input.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+          save();
+        }
+
+        if (event.key === "Escape") {
+          pointEditorPopup?.remove();
+          pointEditorPopup = null;
+        }
+      });
+
+      deleteBtn.addEventListener("click", () => {
+        const pointId = point.properties?.point_id;
+
+        userPoints = userPoints.filter(
+          candidate => candidate.properties?.point_id !== pointId
+        );
+
+        updateUserPoints();
+
+        pointEditorPopup?.remove();
+        pointEditorPopup = null;
+      });
+
+      cancelBtn.addEventListener("click", () => {
+        pointEditorPopup?.remove();
+        pointEditorPopup = null;
+      });
+
+      pointEditorPopup.on("close", () => {
+        pointEditorPopup = null;
+      });
+    }
+
     map.on("click", USER_POINTS_LAYER_ID, e => {
       if (addingPoints || !e.features?.length) return;
 
-      const feature = e.features[0];
-      const featureId = feature.id;
+      e.originalEvent?.stopPropagation?.();
 
-      const point = userPoints.find(point => point.id === featureId);
-      if (!point) return;
+      const renderedFeature = e.features[0];
+      const pointId = renderedFeature.properties?.point_id;
 
-      const currentName =
-        point.properties?.name || "Clearing";
-
-      const enteredName = window.prompt(
-        "Rename clearing:",
-        currentName
+      const point = userPoints.find(
+        candidate => candidate.properties?.point_id === pointId
       );
 
-      if (enteredName === null) return;
-
-      const newName = enteredName.trim();
-
-      if (newName) {
-        point.properties = {
-          ...(point.properties || {}),
-          name: newName
-        };
-
-        updateUserPoints();
+      if (!point) {
+        console.warn("Could not find selected clearing:", renderedFeature);
+        return;
       }
+
+      openPointEditor(point, e.lngLat);
     });
 
     map.on("mouseenter", USER_POINTS_LAYER_ID, () => {
@@ -1040,9 +1290,29 @@ applyTerrainState();
       break;
 
     case "v":
-      toggleTerrain();   // optional if you want a shortcut for 3D
+      toggleTerrain();
+      break;
+
+    case "b":
+      // Desktop shortcut for Add Point
+      if (window.innerWidth > 700) {
+        toggleAddPointMode();
+      }
       break;
   }
+});
+
+
+window.addEventListener("resize", () => {
+  updateClearingsButton();
+  updateDocButton();
+  updateTerrainButton();
+  updateAddPointButton();
+
+  document.getElementById("basemap-toggle-btn").textContent =
+    currentBasemap === "Satellite"
+      ? `Satellite${shortcutHint("C")}`
+      : `Topo50${shortcutHint("C")}`;
 });
 
     updateClearingsButton();
